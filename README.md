@@ -5,7 +5,7 @@ A NetWalk-style puzzle for Kobo e-readers. Rotate the tiles to connect every wir
 ## Features
 
 - Randomly generated, always solvable boards
-- 4×4, 6×6, and 8×8 board sizes
+- Full-screen landscape layouts: 6×4, 8×6, and 10×8 boards
 - Optional wrap-around edges
 - Tap to rotate clockwise, long-press to rotate counterclockwise
 - Powered tiles are highlighted as you connect them
