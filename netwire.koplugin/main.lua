@@ -1,20 +1,9 @@
 local Blitbuffer = require("ffi/blitbuffer")
-local Button = require("ui/widget/button")
 local ButtonDialog = require("ui/widget/buttondialog")
-local ButtonTable = require("ui/widget/buttontable")
-local CenterContainer = require("ui/widget/container/centercontainer")
 local ConfirmBox = require("ui/widget/confirmbox")
-local Font = require("ui/font")
-local FrameContainer = require("ui/widget/container/framecontainer")
 local Game = require("netwire_game")
-local Geom = require("ui/geometry")
-local HorizontalGroup = require("ui/widget/horizontalgroup")
 local Screen = require("device").screen
-local Size = require("ui/size")
-local TextBoxWidget = require("ui/widget/textboxwidget")
 local UIManager = require("ui/uimanager")
-local VerticalGroup = require("ui/widget/verticalgroup")
-local VerticalSpan = require("ui/widget/verticalspan")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local _ = require("gettext")
 
@@ -106,13 +95,10 @@ end
 function NetWire:showBoard()
     if self.dialog then UIManager:close(self.dialog) end
     local connected = self.game:updatePower()
-    local cellSize = math.floor(math.min(
-        Screen:getWidth() / self.width,
-        (Screen:getHeight() - 180) / self.height,
-        96))
-    local grid = VerticalGroup:new{}
+    local cellHeight = math.floor(math.min((Screen:getHeight() - 220) / self.height, 96))
+    local rows = {}
     for y = 1, self.height do
-        local row = HorizontalGroup:new{}
+        local row = {}
         for x = 1, self.width do
             local index = (y - 1) * self.width + x
             local cell = self.game.cells[index]
@@ -122,53 +108,27 @@ function NetWire:showBoard()
             elseif cell.powered then
                 background = Blitbuffer.COLOR_LIGHT_GRAY
             end
-            table.insert(row, Button:new{
+            table.insert(row, {
                 text = GLYPHS[cell.mask],
                 background = background,
-                width = cellSize,
-                height = cellSize,
-                bordersize = 0,
-                margin = 0,
-                padding = 0,
-                avoid_text_truncation = false,
-                text_font_size = cellSize,
-                text_font_bold = false,
+                font_size = math.floor(cellHeight * 0.75),
+                height = cellHeight,
                 callback = function() self:play(index, 1) end,
                 hold_callback = function() self:play(index, -1) end,
             })
         end
-        table.insert(grid, row)
+        table.insert(rows, row)
     end
-    local boardWidth = cellSize * self.width
-    local content = VerticalGroup:new{
-        TextBoxWidget:new{
-            text = string.format(_("NetWire · %d moves · %d/%d connected · tap ↻ / hold ↺"),
-                self.game.moves, connected, self.width * self.height),
-            face = Font:getFace("infofont", 20),
-            width = boardWidth,
-        },
-        VerticalSpan:new{width = Size.padding.default},
-        grid,
-        VerticalSpan:new{width = Size.padding.default},
-        ButtonTable:new{
-            width = boardWidth,
-            buttons = {{
-                {text = _("New game"), callback = function() self:newGame() end},
-                {text = _("Size"), callback = function() self:showSizeMenu() end},
-                {text = _("Close"), callback = function() UIManager:close(self.dialog) end},
-            }},
-        },
-    }
-    self.dialog = FrameContainer:new{
+    table.insert(rows, {
+        {text = _("New game"), callback = function() self:newGame() end},
+        {text = _("Size"), callback = function() self:showSizeMenu() end},
+        {text = _("Close"), callback = function() UIManager:close(self.dialog) end},
+    })
+    self.dialog = ButtonDialog:new{
+        title = string.format(_("NetWire · %d moves · %d/%d connected · tap ↻ / hold ↺"),
+            self.game.moves, connected, self.width * self.height),
         width = Screen:getWidth(),
-        height = Screen:getHeight(),
-        background = Blitbuffer.COLOR_WHITE,
-        bordersize = 0,
-        padding = 0,
-        CenterContainer:new{
-            dimen = Geom:new{x = 0, y = 0, w = Screen:getWidth(), h = Screen:getHeight()},
-            content,
-        },
+        buttons = rows,
     }
     UIManager:show(self.dialog)
 end
