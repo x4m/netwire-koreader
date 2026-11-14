@@ -1,8 +1,9 @@
 local Blitbuffer = require("ffi/blitbuffer")
 local ButtonDialog = require("ui/widget/buttondialog")
-local ConfirmBox = require("ui/widget/confirmbox")
+local InfoMessage = require("ui/widget/infomessage")
 local Game = require("netwire_game")
 local Screen = require("device").screen
+local Size = require("ui/size")
 local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local _ = require("gettext")
@@ -51,17 +52,16 @@ end
 function NetWire:play(index, direction)
     self.game:rotate(index, direction)
     self:showBoard()
-    self:checkWin()
 end
 
-function NetWire:checkWin()
-    if not self.game.won and not self.game:isSolved() then return end
+function NetWire:showWin()
     self.game.won = true
-    UIManager:show(ConfirmBox:new{
-        text = string.format(_("Network connected in %d moves!"), self.game.moves),
-        ok_text = _("New game"),
-        ok_callback = function() self:newGame() end,
+    UIManager:show(InfoMessage:new{
+        text = string.format(_("Network connected in %d moves!\nStarting a new game…"), self.game.moves),
     })
+    UIManager:scheduleIn(1.5, function()
+        self:newGame()
+    end)
 end
 
 function NetWire:showSizeMenu()
@@ -95,7 +95,14 @@ end
 function NetWire:showBoard()
     if self.dialog then UIManager:close(self.dialog) end
     local connected = self.game:updatePower()
-    local cellHeight = math.floor(math.min((Screen:getHeight() - 220) / self.height, 96))
+    if connected == self.width * self.height then
+        self:showWin()
+        return
+    end
+    local cellSize = math.floor(math.min(
+        (Screen:getHeight() - 240) / self.height,
+        Screen:getWidth() / self.width,
+        96))
     local rows = {}
     for y = 1, self.height do
         local row = {}
@@ -111,8 +118,8 @@ function NetWire:showBoard()
             table.insert(row, {
                 text = GLYPHS[cell.mask],
                 background = background,
-                font_size = math.floor(cellHeight * 0.75),
-                height = cellHeight,
+                font_size = math.floor(cellSize * 0.75),
+                height = cellSize,
                 callback = function() self:play(index, 1) end,
                 hold_callback = function() self:play(index, -1) end,
             })
@@ -125,9 +132,9 @@ function NetWire:showBoard()
         {text = _("Close"), callback = function() UIManager:close(self.dialog) end},
     })
     self.dialog = ButtonDialog:new{
-        title = string.format(_("NetWire · %d moves · %d/%d connected · tap ↻ / hold ↺"),
+        title = string.format(_("%d moves · %d/%d connected"),
             self.game.moves, connected, self.width * self.height),
-        width = Screen:getWidth(),
+        width = cellSize * self.width + 2 * Size.border.window + 2 * Size.padding.button,
         buttons = rows,
     }
     UIManager:show(self.dialog)
